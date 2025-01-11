@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use InvalidArgumentException;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'company')]
@@ -28,13 +29,21 @@ class Company
     #[ORM\Column(type: 'string', length: 10)]
     private string $postalCode;
 
+    public function getId(): int
+    {
+        return $this->id;
+    }
+
     public function getName(): string
     {
         return $this->name;
     }
 
-    public function setName(string $name): self
+    public function setName(?string $name): self
     {
+        if ($name === null || trim($name) === '')
+            throw new \InvalidArgumentException('Name cannot be null or empty.');
+
         $this->name = $name;
         return $this;
     }
@@ -44,8 +53,11 @@ class Company
         return $this->nip;
     }
 
-    public function setNip(string $nip): self
+    public function setNip(?string $nip): self
     {
+        if ($nip === null || trim($nip) === '')
+            throw new \InvalidArgumentException('Nip cannot be null or empty.');
+
         $this->nip = $nip;
         return $this;
     }
@@ -55,8 +67,11 @@ class Company
         return $this->address;
     }
 
-    public function setAddress(string $address): self
+    public function setAddress(?string $address): self
     {
+        if ($address === null || trim($address) === '')
+            throw new \InvalidArgumentException('Address cannot be null or empty.');
+
         $this->address = $address;
         return $this;
     }
@@ -66,8 +81,11 @@ class Company
         return $this->city;
     }
 
-    public function setCity(string $city): self
+    public function setCity(?string $city): self
     {
+        if ($city === null || trim($city) === '')
+            throw new \InvalidArgumentException('City cannot be null or empty.');
+
         $this->city = $city;
         return $this;
     }
@@ -77,8 +95,11 @@ class Company
         return $this->postalCode;
     }
 
-    public function setPostalCode(string $postalCode): self
+    public function setPostalCode(?string $postalCode): self
     {
+        if ($postalCode === null || trim($postalCode) === '')
+            throw new \InvalidArgumentException('PostalCode cannot be null or empty.');
+
         $this->postalCode = $postalCode;
         return $this;
     }

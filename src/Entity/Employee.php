@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
+use InvalidArgumentException;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'employee')]
@@ -22,19 +23,27 @@ class Employee
     #[ORM\Column(type: 'string', length: 100)]
     private string $email;
 
-    #[ORM\Column(type: 'string', length: 15, nullable: true)]
+    #[ORM\Column(type: 'string', length: 15, options: ["default" => ""])]
     private ?string $phoneNumber;
 
     #[ORM\ManyToOne(targetEntity: Company::class)]
     private Company $company;
+
+    public function getId(): int
+    {
+        return $this->id;
+    }
 
     public function getFirstName(): string
     {
         return $this->firstName;
     }
 
-    public function setFirstName(string $firstName): self
+    public function setFirstName(?string $firstName): self
     {
+        if ($firstName === null || trim($firstName) === '')
+            throw new \InvalidArgumentException('First name cannot be null or empty.');
+
         $this->firstName = $firstName;
         return $this;
     }
@@ -44,8 +53,11 @@ class Employee
         return $this->lastName;
     }
 
-    public function setLastName(string $lastName): self
+    public function setLastName(?string $lastName): self
     {
+        if ($lastName === null || trim($lastName) === '')
+            throw new \InvalidArgumentException('Last name cannot be null or empty.');
+
         $this->lastName = $lastName;
         return $this;
     }
@@ -55,8 +67,11 @@ class Employee
         return $this->email;
     }
 
-    public function setEmail(string $email): self
+    public function setEmail(?string $email): self
     {
+        if ($email === null || trim($email) === '')
+            throw new \InvalidArgumentException('Email cannot be null or empty.');
+
         $this->email = $email;
         return $this;
     }
@@ -68,7 +83,7 @@ class Employee
 
     public function setPhoneNumber(?string $phoneNumber): self
     {
-        $this->phoneNumber = $phoneNumber;
+        $this->phoneNumber = $phoneNumber ?? "";
         return $this;
     }
 }
