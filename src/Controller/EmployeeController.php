@@ -23,7 +23,7 @@ class EmployeeController extends AbstractController
     }
 
     #[Route('/api/employee', name: 'create_employee', methods: ['POST'])]
-    public function createEmployee($data, Company $company = null): JsonResponse
+    public function createEmployee(mixed $data, Company $company = null): JsonResponse
     {
         if ($data instanceof Request) {
             $data = json_decode($data->getContent(), true);
@@ -72,9 +72,8 @@ class EmployeeController extends AbstractController
     {
         $employee = $this->entityManager->getRepository(Employee::class)->find($id);
 
-        if (!$employee) {
+        if (!$employee)
             return $this->json(['message' => 'Employee not found'], 404);
-        }
 
         $data = [
             'id' => $employee->getId(),
@@ -133,13 +132,42 @@ class EmployeeController extends AbstractController
     {
         $employee = $this->entityManager->getRepository(Employee::class)->find($id);
 
-        if (!$employee) {
+        if (!$employee)
             return $this->json(['message' => 'Employee not found'], 404);
-        }
 
         $this->entityManager->remove($employee);
         $this->entityManager->flush();
 
         return $this->json(['message' => 'Employee deleted successfully']);
+    }
+
+    #[Route('/api/employee/{id}/update-company', name: 'update_employee_company', methods: ['PUT'])]
+    public function updateEmployeeCompany(int $id, Request $request, EntityChangeService $entityChangeService): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+
+        // Walidacja danych
+        if (!$data || !isset($data['company_id']))
+            return $this->json(['error' => 'Company ID is required'], 400);
+
+        $employee = $this->entityManager->getRepository(Employee::class)->find($id);
+
+        if (!$employee)
+            return $this->json(['error' => 'Employee not found'], 404);
+
+        $company = $this->entityManager->getRepository(Company::class)->find($data['company_id']);
+
+        if (!$company)
+            return $this->json(['error' => 'Company not found'], 404);
+
+        $employee->setCompany($company);
+
+        if ($entityChangeService->isEntityDirty($employee)) {
+            $this->entityManager->flush();
+
+            return $this->json(['message' => 'Employee\'s company updated successfully']);
+        }
+
+        return $this->json(['message' => 'No changes detected']);
     }
 }

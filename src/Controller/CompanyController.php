@@ -77,9 +77,8 @@ class CompanyController extends AbstractController
     {
         $company = $this->entityManager->getRepository(Company::class)->find($id);
 
-        if (!$company) {
+        if (!$company)
             return $this->json(['message' => 'Company not found'], 404);
-        }
 
         $data = [
             'id' => $company->getId(),
@@ -136,9 +135,8 @@ class CompanyController extends AbstractController
     {
         $company = $this->entityManager->getRepository(Company::class)->find($id);
 
-        if (!$company) {
+        if (!$company)
             return $this->json(['message' => 'Company not found'], 404);
-        }
 
         $this->entityManager->remove($company);
         $this->entityManager->flush();
