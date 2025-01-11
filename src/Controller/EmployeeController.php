@@ -5,6 +5,7 @@ namespace App\Controller;
 require_once __DIR__ . '/../../vendor/autoload.php';
 
 use App\Entity\Employee;
+use App\Entity\Company;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -22,12 +23,14 @@ class EmployeeController extends AbstractController
     }
 
     #[Route('/api/employee', name: 'create_employee', methods: ['POST'])]
-    public function createEmployee(Request $request): JsonResponse
+    public function createEmployee($data, Company $company = null): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        if ($data instanceof Request) {
+            $data = json_decode($data->getContent(), true);
+        }
 
         // Walidacja danych 
-        if (!$data || !isset($data['firstName'], $data['lastName'], $data['email']))
+        if (!$data || !is_array($data) || !isset($data['firstName'], $data['lastName'], $data['email']))
             return $this->json(['error' => 'Invalid data. Required fields: firstName, lastName, email.'], 400);
 
         $employee = new Employee();
@@ -35,6 +38,9 @@ class EmployeeController extends AbstractController
         $employee->setLastName($data['lastName']);
         $employee->setEmail($data['email']);
         $employee->setPhoneNumber($data['phoneNumber'] ?? null);
+
+        if ($company !== null)
+            $employee->setCompany($company);
 
         $this->entityManager->persist($employee);
         $this->entityManager->flush();

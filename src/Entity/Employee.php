@@ -3,7 +3,6 @@
 namespace App\Entity;
 
 use Doctrine\ORM\Mapping as ORM;
-use InvalidArgumentException;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'employee')]
@@ -26,8 +25,10 @@ class Employee
     #[ORM\Column(type: 'string', length: 15, options: ["default" => ""])]
     private ?string $phoneNumber;
 
-    #[ORM\ManyToOne(targetEntity: Company::class)]
-    private Company $company;
+    #[ORM\ManyToOne(targetEntity: Company::class, inversedBy: 'employees')]
+    #[ORM\JoinColumn(name: 'company_id', referencedColumnName: 'id', onDelete: 'SET NULL', nullable: true)]
+
+    private ?Company $company = null;
 
     public function getId(): int
     {
@@ -84,6 +85,17 @@ class Employee
     public function setPhoneNumber(?string $phoneNumber): self
     {
         $this->phoneNumber = $phoneNumber ?? "";
+        return $this;
+    }
+
+    public function getCompany(): ?Company
+    {
+        return $this->company;
+    }
+
+    public function setCompany(?Company $company): self
+    {
+        $this->company = $company;
         return $this;
     }
 }

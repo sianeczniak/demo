@@ -22,13 +22,13 @@ class CompanyController extends AbstractController
     }
 
     #[Route('/api/company', name: 'create_company', methods: ['POST'])]
-    public function createCompany(Request $request): JsonResponse
+    public function createCompany(Request $request, EmployeeController $employeeController): JsonResponse
     {
         $data = json_decode($request->getContent(), true);
 
         // Walidacja danych
         if (!$data || !isset($data['name'], $data['nip'], $data['address'], $data['city'], $data['postalCode']))
-            return $this->json(['error' => 'All fields are required'], 400);
+            return $this->json(['error' => 'Invalid data. All fields of company are required'], 400);
 
         $company = new Company();
         $company->setName($data['name']);
@@ -39,6 +39,15 @@ class CompanyController extends AbstractController
 
         $this->entityManager->persist($company);
         $this->entityManager->flush();
+
+        if (isset($data['employees']) && is_array($data['employees'])) {
+            foreach ($data['employees'] as $employeeData) {
+                $response = $employeeController->createEmployee($employeeData, $company);
+                if ($response->getStatusCode() !== 201) {
+                    return $this->json(['error' => 'Failed to create employee'], 500);
+                }
+            }
+        }
 
         return $this->json(['message' => 'Company created successfully'], 201);
     }
