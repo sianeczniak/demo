@@ -23,15 +23,21 @@ class EmployeeController extends AbstractController
     }
 
     #[Route('/api/employee', name: 'create_employee', methods: ['POST'])]
-    public function createEmployee(mixed $data, Company $company = null): JsonResponse
+    public function createEmployeeFromRequest(Request $request): JsonResponse
     {
-        if ($data instanceof Request) {
-            $data = json_decode($data->getContent(), true);
-        }
+        $data = json_decode($request->getContent(), true);
+        if (!$data)
+            return $this->json(['error' => 'Invalid JSON data for creating employee'], 400);
 
-        // Walidacja danych 
+        return $this->createEmployee($data);
+    }
+
+    // chętnie użyłabym typu mixed zamiast array, jednak ogranicza mnie Symfony i jego sposób rozpoznawania typu zmiennych
+    public function createEmployee(array $data, Company $company = null): JsonResponse
+    {
+        // Walidacja danych
         if (!$data || !is_array($data) || !isset($data['firstName'], $data['lastName'], $data['email']))
-            return $this->json(['error' => 'Invalid data. Required fields: firstName, lastName, email.'], 400);
+            return $this->json(['error' => 'Invalid data. Required fields for employee: firstName, lastName, email.'], 400);
 
         $employee = new Employee();
         $employee->setFirstName($data['firstName']);
