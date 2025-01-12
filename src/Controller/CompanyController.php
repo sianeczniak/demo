@@ -143,4 +143,28 @@ class CompanyController extends AbstractController
 
         return $this->json(['message' => 'Company deleted successfully']);
     }
+
+    #[Route('/api/company/{id}/employees', name: 'get_company_employees', methods: ['GET'])]
+    public function getEmployees(int $id): JsonResponse
+    {
+        $company = $this->entityManager->find(Company::class, $id);
+
+        if (!$company)
+            return $this->json(['error' => 'Company not found'], 404);
+
+        $employees = $company->getEmployees();
+
+        $data = [];
+        foreach ($employees as $employee) {
+            $data[] = [
+                'id' => $employee->getId(),
+                'firstName' => $employee->getFirstName(),
+                'lastName' => $employee->getLastName(),
+                'email' => $employee->getEmail(),
+                'phoneNumber' => $employee->getPhoneNumber(),
+            ];
+        }
+
+        return $this->json($data);
+    }
 }

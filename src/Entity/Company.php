@@ -2,10 +2,13 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'company')]
+
 class Company
 {
     #[ORM\Id]
@@ -27,6 +30,14 @@ class Company
 
     #[ORM\Column(type: 'string', length: 10)]
     private string $postalCode;
+
+    #[ORM\OneToMany(targetEntity: Employee::class, mappedBy: 'company')]
+    private ?Collection $employees = null;
+
+    public function __construct()
+    {
+        $this->employees = new ArrayCollection();
+    }
 
     public function getId(): int
     {
@@ -101,5 +112,10 @@ class Company
 
         $this->postalCode = $postalCode;
         return $this;
+    }
+
+    public function getEmployees(): Collection
+    {
+        return $this->employees;
     }
 }
