@@ -3,6 +3,8 @@
 namespace App\Service;
 
 use Doctrine\ORM\EntityManagerInterface;
+use App\Entity\Company;
+use App\Entity\Employee;
 
 class EntityChangeService
 {
@@ -13,7 +15,7 @@ class EntityChangeService
         $this->entityManager = $entityManager;
     }
 
-    public function isEntityDirty($entity)
+    public function isEntityDirty(Company|Employee $entity): bool
     {
         $this->entityManager->persist($entity);
         $this->entityManager->getUnitOfWork()->recomputeSingleEntityChangeSet($this->entityManager->getClassMetadata(get_class($entity)), $entity);

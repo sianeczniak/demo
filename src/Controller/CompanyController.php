@@ -31,11 +31,7 @@ class CompanyController extends AbstractController
             return $this->json(['error' => 'Invalid data. All fields of company are required'], 400);
 
         $company = new Company();
-        $company->setName($data['name']);
-        $company->setNip($data['nip']);
-        $company->setAddress($data['address']);
-        $company->setCity($data['city']);
-        $company->setPostalCode($data['postalCode']);
+        $company->setName($data['name'])->setNip($data['nip'])->setAddress($data['address'])->setCity($data['city'])->setPostalCode($data['postalCode']);
 
         $this->entityManager->persist($company);
         $this->entityManager->flush();

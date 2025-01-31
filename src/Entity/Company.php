@@ -19,7 +19,7 @@ class Company
     #[ORM\Column(type: 'string', length: 255)]
     private string $name;
 
-    #[ORM\Column(type: 'string', length: 10)]
+    #[ORM\Column(type: 'string', length: 10, unique: true)]
     private string $nip;
 
     #[ORM\Column(type: 'string', length: 100)]
