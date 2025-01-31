@@ -2,56 +2,45 @@
 
 namespace App\Controller;
 
-require_once __DIR__ . '/../../vendor/autoload.php';
-
-use App\Entity\Employee;
-use App\Entity\Company;
-use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Annotation\Route;
+
+use App\Entity\Company;
+use App\Entity\Employee;
+use App\Service\EmployeeService;
 use App\Service\EntityChangeService;
 
 class EmployeeController extends AbstractController
 {
-    private EntityManagerInterface $entityManager;
+    private EmployeeService $employeeService;
 
-    public function __construct(EntityManagerInterface $entityManager)
+    public function __construct(EmployeeService $employeeService)
     {
-        $this->entityManager = $entityManager;
+        $this->employeeService = $employeeService;
     }
 
     #[Route('/api/employee', name: 'create_employee', methods: ['POST'])]
-    public function createEmployeeFromRequest(Request $request): JsonResponse
+    public function createEmployee(Request $request): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
-        if (!$data)
-            return $this->json(['error' => 'Invalid JSON data for creating employee'], 400);
+        try {
+            $data = json_decode($request->getContent(), true);
+            if (!$data) {
+                throw new BadRequestHttpException('Invalid JSON data');
+            }
 
-        return $this->createEmployee($data);
-    }
+            $employee = $this->employeeService->createAndSaveEmployee($data);
 
-    // chętnie użyłabym typu mixed zamiast array, jednak ogranicza mnie Symfony i jego sposób rozpoznawania typu zmiennych
-    public function createEmployee(array $data, Company $company = null): JsonResponse
-    {
-        // Walidacja danych
-        if (!$data || !is_array($data) || !isset($data['firstName'], $data['lastName'], $data['email']))
-            return $this->json(['error' => 'Invalid data. Required fields for employee: firstName, lastName, email.'], 400);
-
-        $employee = new Employee();
-        $employee->setFirstName($data['firstName']);
-        $employee->setLastName($data['lastName']);
-        $employee->setEmail($data['email']);
-        $employee->setPhoneNumber($data['phoneNumber'] ?? null);
-
-        if ($company !== null)
-            $employee->setCompany($company);
-
-        $this->entityManager->persist($employee);
-        $this->entityManager->flush();
-
-        return $this->json(['message' => 'Employee created successfully'], 201);
+            return $this->json(
+                ['message' => 'Employee created successfully', 'id' => $employee->getId()],
+                Response::HTTP_CREATED
+            );
+        } catch (BadRequestHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
+        }
     }
 
     #[Route('/api/employee', name: 'get_all_employees', methods: ['GET'])]
