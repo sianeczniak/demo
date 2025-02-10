@@ -9,17 +9,18 @@ use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Symfony\Component\Routing\Annotation\Route;
 
-use App\Entity\Company;
+use App\Service\CompanyEmployeeService;
 use App\Service\CompanyService;
-use App\Service\EntityChangeService;
 
 class CompanyController extends AbstractController
 {
     private CompanyService $companyService;
+    private CompanyEmployeeService $companyEmployeeService;
 
-    public function __construct(CompanyService $companyService)
+    public function __construct(CompanyService $companyService, CompanyEmployeeService $companyEmployeeService)
     {
         $this->companyService = $companyService;
+        $this->companyEmployeeService = $companyEmployeeService;
     }
 
     #[Route('/api/company', name: 'create_company', methods: ['POST'])]
@@ -27,10 +28,12 @@ class CompanyController extends AbstractController
     {
         try {
             $data = json_decode($request->getContent(), true);
-            $company = $this->companyService->createCompany(
-                $data,
-                $data['employees'] ?? []
-            );
+            $company = $this->companyService->createCompany($data);
+
+            // Jeśli są dane pracowników, tworzymy ich
+            if (!empty($data['employees'])) {
+                $this->companyEmployeeService->createEmployeesForCompany($company, $data['employees']);
+            }
 
             return $this->json(
                 ['message' => 'Company created successfully', 'id' => $company->getId()],
@@ -44,41 +47,22 @@ class CompanyController extends AbstractController
     #[Route('/api/company', name: 'get_all_companies', methods: ['GET'])]
     public function getAllCompanies(): JsonResponse
     {
-        $companies = $this->entityManager->getRepository(Company::class)->findAll();
-        $data = [];
-
-        foreach ($companies as $company) {
-            $data[] = [
-                'id' => $company->getId(),
-                'name' => $company->getName(),
-                'nip' => $company->getNip(),
-                'address' => $company->getAddress(),
-                'city' => $company->getCity(),
-                'postalCode' => $company->getPostalCode(),
-            ];
-        }
-
+        $data = $this->companyService->getAllCompanies();
         return $this->json($data);
     }
 
     #[Route('/api/company/{id}', name: 'get_company', methods: ['GET'])]
     public function getCompany(int $id): JsonResponse
     {
-        $company = $this->entityManager->getRepository(Company::class)->find($id);
+        error_log('Start');
+        // $this->entityManager->getConfiguration()->setSQLLogger(new \Doctrine\DBAL\Logging\EchoSQLLogger());
+        try {
+            $companyData = $this->companyService->getCompany($id);
 
-        if (!$company)
-            return $this->json(['message' => 'Company not found'], 404);
-
-        $data = [
-            'id' => $company->getId(),
-            'name' => $company->getName(),
-            'nip' => $company->getNip(),
-            'address' => $company->getAddress(),
-            'city' => $company->getCity(),
-            'postalCode' => $company->getPostalCode(),
-        ];
-
-        return $this->json($data);
+            return $this->json($companyData);
+        } catch (BadRequestHttpException $e) {
+            return $this->json(['error' => 'Company not found'], Response::HTTP_NOT_FOUND);
+        }
     }
 
     #[Route('/api/company/{id}', name: 'update_company', methods: ['PUT'])]
@@ -109,38 +93,23 @@ class CompanyController extends AbstractController
     #[Route('/api/company/{id}', name: 'delete_company', methods: ['DELETE'])]
     public function deleteCompany(int $id): JsonResponse
     {
-        $company = $this->entityManager->getRepository(Company::class)->find($id);
+        try {
+            $this->companyService->deleteCompany($id);
 
-        if (!$company)
-            return $this->json(['message' => 'Company not found'], 404);
-
-        $this->entityManager->remove($company);
-        $this->entityManager->flush();
-
-        return $this->json(['message' => 'Company deleted successfully']);
+            return $this->json(['message' => 'Company deleted successfully']);
+        } catch (BadRequestHttpException $e) {
+            return $this->json(['error' => 'Company not found'], Response::HTTP_NOT_FOUND);
+        }
     }
 
     #[Route('/api/company/{id}/employees', name: 'get_company_employees', methods: ['GET'])]
-    public function getEmployees(int $id): JsonResponse
+    public function getCompanyEmployees(int $id): JsonResponse
     {
-        $company = $this->entityManager->find(Company::class, $id);
-
-        if (!$company)
-            return $this->json(['error' => 'Company not found'], 404);
-
-        $employees = $company->getEmployees();
-
-        $data = [];
-        foreach ($employees as $employee) {
-            $data[] = [
-                'id' => $employee->getId(),
-                'firstName' => $employee->getFirstName(),
-                'lastName' => $employee->getLastName(),
-                'email' => $employee->getEmail(),
-                'phoneNumber' => $employee->getPhoneNumber(),
-            ];
+        try {
+            $employees = $this->companyEmployeeService->getCompanyEmployees($id);
+            return $this->json($employees);
+        } catch (BadRequestHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
         }
-
-        return $this->json($data);
     }
 }

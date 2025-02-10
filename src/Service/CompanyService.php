@@ -7,23 +7,19 @@ use Symfony\Component\HttpKernel\Exception\BadRequestHttpException;
 use Doctrine\ORM\EntityManagerInterface;
 
 use App\Entity\Company;
-use App\Service\EmployeeService;
 use App\Service\EntityChangeService;
 
 class CompanyService
 {
     private EntityManagerInterface $entityManager;
     private EntityChangeService $changeService;
-    private EmployeeService $employeeService;
 
     public function __construct(
         EntityManagerInterface $entityManager,
         EntityChangeService $changeService,
-        EmployeeService $employeeService,
     ) {
         $this->entityManager = $entityManager;
         $this->changeService = $changeService;
-        $this->employeeService = $employeeService;
     }
 
     /**
@@ -34,37 +30,27 @@ class CompanyService
      * @return Company
      * @throws ValidationFailedException
      */
-    public function createCompany(array $companyData, array $employeesData = []): Company
+    public function createCompany(array $companyData): Company
     {
         try {
             $this->validateCompanyData($companyData);
-
-            // Rozpoczynamy transakcję
-            $this->entityManager->beginTransaction();
 
             $company = new Company();
             $this->updateCompanyFields($company, $companyData);
 
             $this->entityManager->persist($company);
-
-            if (!empty($employeesData)) {
-                foreach ($employeesData as $employeeData) {
-                    $this->employeeService->createEmployee($employeeData, $company);
-                }
-            }
-
             $this->entityManager->flush();
-            $this->entityManager->commit();
 
             return $company;
         } catch (\Exception $e) {
-            $this->entityManager->rollback();
             throw $e;
         }
     }
 
     /**
      * Aktualizuje dane firmy, śledząc czy nastąpiły rzeczywiste zmiany
+     * @param array $data Wybrane właściwości firmy do zaktualizowania 
+     * @return bool Informacja o zastosowaniu zmian
      */
     public function updateCompany(array $data): bool
     {
@@ -83,6 +69,97 @@ class CompanyService
 
         return $hasChanges;
     }
+
+    /**
+     * Pobiera wszystkie firmy
+     * @return array Firmy
+     */
+    public function getAllCompanies(): array
+    {
+        $companies = $this->entityManager->getRepository(Company::class)->findAll();
+        $data = [];
+
+        foreach ($companies as $company) {
+            $data[] = [
+                'id' => $company->getId(),
+                'name' => $company->getName(),
+                'nip' => $company->getNip(),
+                'address' => $company->getAddress(),
+                'city' => $company->getCity(),
+                'postalCode' => $company->getPostalCode(),
+            ];
+        }
+
+        return $data;
+    }
+
+    /**
+     * Pobiera firmę o danym id
+     * @param int $id Id szukanej firmy
+     * @return array Szukana firma
+     */
+    public function getCompany(int $id): array
+    {
+        $company = $this->findCompanyOrFail($id);
+
+        $data = [
+            'id' => $company->getId(),
+            'name' => $company->getName(),
+            'nip' => $company->getNip(),
+            'address' => $company->getAddress(),
+            'city' => $company->getCity(),
+            'postalCode' => $company->getPostalCode(),
+        ];
+
+        return $data;
+    }
+
+    /**
+     * Usuwa firmę o danym id
+     * @param int $id Id szukanej firmy
+     * @return void
+     */
+    public function deleteCompany(int $id): void
+    {
+        try {
+
+            $company = $this->findCompanyOrFail($id);
+
+            $this->entityManager->remove($company);
+            $this->entityManager->flush();
+        } catch (BadRequestHttpException $e) {
+            throw $e;
+        }
+    }
+
+    /**
+     * Pobiera pracowników danej firmy
+     * @param int $id Id firmy
+     * @return array Pracownicy
+     */
+    // public function getEmployees(int $id): array
+    // {
+    //     try {
+
+    //         $company = $this->findCompanyOrFail($id);
+    //         $employees = $company->getEmployees();
+
+    //         $data = [];
+    //         foreach ($employees as $employee) {
+    //             $data[] = [
+    //                 'id' => $employee->getId(),
+    //                 'firstName' => $employee->getFirstName(),
+    //                 'lastName' => $employee->getLastName(),
+    //                 'email' => $employee->getEmail(),
+    //                 'phoneNumber' => $employee->getPhoneNumber(),
+    //             ];
+    //         }
+
+    //         return $data;
+    //     } catch (BadRequestHttpException $e) {
+    //         throw $e;
+    //     }
+    // }
 
     /**
      * Pomocnicza metoda do walidacji danych firmy
@@ -107,6 +184,9 @@ class CompanyService
         }
     }
 
+    /**
+     * Pomocnicza metoda do zmiany wartości pól encji Company
+     */
     private function updateCompanyFields(Company $company, array $data): void
     {
         if (isset($data['name']) && trim($data['name']) !== $company->getName())
@@ -121,7 +201,10 @@ class CompanyService
             $company->setPostalCode($data['postalCode']);
     }
 
-    private function findCompanyOrFail(int $id): Company
+    /**
+     * Pomocnicza metoda do znalezienia encji Company o danym id
+     */
+    public function findCompanyOrFail(int $id): Company
     {
         $company = $this->entityManager->getRepository(Company::class)->find($id);
         if (!$company) {

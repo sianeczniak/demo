@@ -11,16 +11,19 @@ use Symfony\Component\Routing\Annotation\Route;
 
 use App\Entity\Company;
 use App\Entity\Employee;
+use App\Service\CompanyEmployeeService;
 use App\Service\EmployeeService;
 use App\Service\EntityChangeService;
 
 class EmployeeController extends AbstractController
 {
     private EmployeeService $employeeService;
+    private CompanyEmployeeService $companyEmployeeService;
 
-    public function __construct(EmployeeService $employeeService)
+    public function __construct(EmployeeService $employeeService, CompanyEmployeeService $companyEmployeeService)
     {
         $this->employeeService = $employeeService;
+        $this->companyEmployeeService = $companyEmployeeService;
     }
 
     #[Route('/api/employee', name: 'create_employee', methods: ['POST'])]
@@ -46,123 +49,70 @@ class EmployeeController extends AbstractController
     #[Route('/api/employee', name: 'get_all_employees', methods: ['GET'])]
     public function getAllEmployees(): JsonResponse
     {
-        $employees = $this->entityManager->getRepository(Employee::class)->findAll();
-        $data = [];
 
-        foreach ($employees as $employee) {
-            $data[] = [
-                'id' => $employee->getId(),
-                'firstName' => $employee->getFirstName(),
-                'lastName' => $employee->getLastName(),
-                'email' => $employee->getEmail(),
-                'phoneNumber' => $employee->getPhoneNumber()
-            ];
-        }
-
-        return $this->json($data);
+        $employeesData = $this->employeeService->getAllEmployees();
+        return $this->json($employeesData);
     }
 
-    #[Route('/api/employee/{id}', name: 'get_employee_by_id', methods: ['GET'])]
-    public function getEmployeeById(int $id): JsonResponse
+    #[Route('/api/employee/{id}', name: 'get_employee', methods: ['GET'])]
+    public function getEmployee(int $id): JsonResponse
     {
-        $employee = $this->entityManager->getRepository(Employee::class)->find($id);
-
-        if (!$employee)
-            return $this->json(['message' => 'Employee not found'], 404);
-
-        $data = [
-            'id' => $employee->getId(),
-            'firstName' => $employee->getFirstName(),
-            'lastName' => $employee->getLastName(),
-            'email' => $employee->getEmail(),
-            'phoneNumber' => $employee->getPhoneNumber()
-        ];
-
-        return $this->json($data);
+        try {
+            $employeeData = $this->employeeService->getEmployee($id);
+            return $this->json($employeeData);
+        } catch (BadRequestHttpException $e) {
+            return $this->json(['error' => 'Employee not found'], Response::HTTP_NOT_FOUND);
+        }
     }
 
     #[Route('/api/employee/{id}', name: 'update_employee', methods: ['PUT'])]
-    public function updateEmployee(int $id, Request $request, EntityChangeService $entityChangeService): JsonResponse
+    public function updateEmployee(Request $request, int $id): JsonResponse
     {
         try {
-            $employee = $this->entityManager->getRepository(Employee::class)->find($id);
-
-            if (!$employee)
-                throw new \Exception('Employee not found');
-
-            $this->entityManager->persist($employee);
             $data = json_decode($request->getContent(), true);
+            $data['id'] = $id;
 
-            if ($data === null)
-                throw new \Exception('Invalid JSON provided');
+            $hasChanges = $this->employeeService->updateEmployee($data);
 
-            if (isset($data['firstName']) && trim($data['firstName']) !== $employee->getFirstName())
-                $employee->setFirstName($data['firstName']);
-
-            if (isset($data['lastName']) && trim($data['lastName']) !== $employee->getLastName())
-                $employee->setLastName($data['lastName']);
-
-            if (isset($data['email']) && trim($data['email']) !== $employee->getEmail() && filter_var($data['email'], FILTER_VALIDATE_EMAIL))
-                $employee->setEmail($data['email']);
-
-            if (isset($data['phoneNumber']) && trim($data['phoneNumber']) !== $employee->getPhoneNumber())
-                $employee->setPhoneNumber($data['phoneNumber']);
-
-
-            if ($entityChangeService->isEntityDirty($employee)) {
-
-                $this->entityManager->flush();
-
-                return $this->json(['message' => 'Employee updated successfully']);
-            }
-
-            return $this->json(['message' => 'No changes detected']);
-        } catch (\Exception | \InvalidArgumentException $e) {
-            return $this->json(['error' => $e->getMessage()], 400);
+            if ($hasChanges)
+                return $this->json(
+                    ['message' => 'Employee updated successfully', 'id' => $id],
+                    Response::HTTP_OK
+                );
+            else
+                return $this->json(
+                    ['message' => 'No changes detected', 'id' => $id],
+                    Response::HTTP_NOT_MODIFIED
+                );
+        } catch (BadRequestHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_BAD_REQUEST);
         }
     }
 
     #[Route('/api/employee/{id}', name: 'delete_employee', methods: ['DELETE'])]
     public function deleteEmployee(int $id): JsonResponse
     {
-        $employee = $this->entityManager->getRepository(Employee::class)->find($id);
-
-        if (!$employee)
-            return $this->json(['message' => 'Employee not found'], 404);
-
-        $this->entityManager->remove($employee);
-        $this->entityManager->flush();
-
-        return $this->json(['message' => 'Employee deleted successfully']);
+        try {
+            $this->employeeService->deleteEmployee($id);
+            return $this->json(['message' => 'Employee deleted successfully']);
+        } catch (BadRequestHttpException $e) {
+            return $this->json(['error' => 'Employee not found'], Response::HTTP_NOT_FOUND);
+        }
     }
 
     #[Route('/api/employee/{id}/update-company', name: 'update_employee_company', methods: ['PUT'])]
-    public function updateEmployeeCompany(int $id, Request $request, EntityChangeService $entityChangeService): JsonResponse
+    public function updateEmployeeCompany(Request $request, int $id): JsonResponse
     {
-        $data = json_decode($request->getContent(), true);
+        try {
+            $data = json_decode($request->getContent(), true);
+            $hasChanges = $this->companyEmployeeService->updateEmployeeCompany($id, $data['company_id']);
 
-        // Walidacja danych
-        if (!$data || !isset($data['company_id']))
-            return $this->json(['error' => 'Company ID is required'], 400);
-
-        $employee = $this->entityManager->getRepository(Employee::class)->find($id);
-
-        if (!$employee)
-            return $this->json(['error' => 'Employee not found'], 404);
-
-        $company = $this->entityManager->getRepository(Company::class)->find($data['company_id']);
-
-        if (!$company)
-            return $this->json(['error' => 'Company not found'], 404);
-
-        $employee->setCompany($company);
-
-        if ($entityChangeService->isEntityDirty($employee)) {
-            $this->entityManager->flush();
-
-            return $this->json(['message' => 'Employee\'s company updated successfully']);
+            if ($hasChanges)
+                return $this->json(['message' => 'Employee\'s company updated successfully', 'id' => $id], response::HTTP_OK);
+            else
+                return $this->json(['message' => 'No changes detected', 'id' => $id], Response::HTTP_NOT_MODIFIED);
+        } catch (BadRequestHttpException $e) {
+            return $this->json(['error' => $e->getMessage()], Response::HTTP_NOT_FOUND);
         }
-
-        return $this->json(['message' => 'No changes detected']);
     }
 }
