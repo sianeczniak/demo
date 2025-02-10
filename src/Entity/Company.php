@@ -17,19 +17,19 @@ class Company
     private ?int $id;
 
     #[ORM\Column(type: 'string', length: 255)]
-    private string $name;
+    private string $name = '';
 
     #[ORM\Column(type: 'string', length: 10, unique: true)]
-    private string $nip;
+    private string $nip = '';
 
     #[ORM\Column(type: 'string', length: 100)]
-    private string $address;
+    private string $address = '';
 
     #[ORM\Column(type: 'string', length: 50)]
-    private string $city;
+    private string $city = '';
 
     #[ORM\Column(type: 'string', length: 10)]
-    private string $postalCode;
+    private string $postalCode = '';
 
     #[ORM\OneToMany(targetEntity: Employee::class, mappedBy: 'company')]
     private ?Collection $employees = null;

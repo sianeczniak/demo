@@ -14,21 +14,24 @@ class Employee
     private ?int $id;
 
     #[ORM\Column(type: 'string', length: 50)]
-    private string $firstName;
+    private string $firstName = '';
 
     #[ORM\Column(type: 'string', length: 50)]
-    private string $lastName;
+    private string $lastName = '';
 
     #[ORM\Column(type: 'string', length: 100, unique: true)]
-    private string $email;
+    private string $email = '';
 
     #[ORM\Column(type: 'string', length: 15, options: ["default" => ""])]
-    private ?string $phoneNumber;
+    private ?string $phoneNumber = null;
 
     #[ORM\ManyToOne(targetEntity: Company::class, inversedBy: 'employees')]
     #[ORM\JoinColumn(name: 'company_id', referencedColumnName: 'id', onDelete: 'SET NULL', nullable: true)]
 
     private ?Company $company = null;
+
+    // Konstruktor wymusza utworzenie poprawnego obiektu
+    public function __construct() {}
 
     public function getId(): int
     {
